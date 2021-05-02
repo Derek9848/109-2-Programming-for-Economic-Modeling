@@ -1,0 +1,253 @@
+---
+title: "2021-03-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Makecondition
+
+```{r makecondition}
+library(reticulate)
+use_condaenv("r-reticulate")
+
+library(econR) # 經濟模型程式設計專題用
+```
+
+## Install packages
+
+Through Conda:
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"))
+```
+
+Through PyPI:
+```{r, eval=FALSE}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"),
+              pip = TRUE)
+```
+
+
+## Codes
+
+```{python}
+print("Hello, world.")
+
+```
+
+```{python}
+obj_py = ["Hello", "World."]
+obj_py[0]
+
+obj_py[0] = "Hi"
+print(obj_py)
+
+```
+
+$$ U : X \rightarrow \mathcal{R}$$
+```{python}
+choiceSet_basic0 = {"apple": 1, "banana": 1}
+
+```
+
+```{python}
+# one alternative
+choiceSet_basic0[0]
+
+# the other alternative
+choiceSet_basic0[1]
+
+#不能用位置取 會有error
+```
+
+```{python}
+choiceSet_basic0["apple"]
+choiceSet_basic0["banana"]
+
+```
+
+##function
+
+choice set
+```{r}
+X = list(
+  list(
+    banana=0, apple=1
+  ),
+  list(
+    banana=1, apple=0
+  )
+)
+```
+
+```{r}
+x = X[[1]] # one alternative
+
+u = {
+  x[["banana"]] *5 + x$apple *3
+}
+```
+
+```{r}
+U = function(x){
+   assertthat::assert_that(
+   purrr::has_element(X, x),  #大X裡是不是有小x這個element?
+    msg="x should be an element in choice set X"
+  )
+  
+  u = {
+    x$banana *5 + x$apple *3
+  }
+  
+  return(u)
+}
+```
+
+```{r}
+library(magrittr)
+X %>% purrr::has_element(x)
+```
+
+```{python}
+X = [
+  {"banana": 1, "apple": 0},
+  {"banana": 0, "apple": 1}
+]
+
+```
+
+prototyping:
+```{python}
+x = X[0]
+
+u = x["banana"] *5 + x["apple"] *3
+u = x.get("banana") *5 + x.get("apple") *3
+print(u)
+
+```
+
+```{python}
+A = 300
+
+if A < 5:
+    print("I am small.") # Four spaces
+else:
+    print("I am large.") # Four spaces
+    if A > 50:
+        print( # Eight spaces
+         "I am more than 50.") # TEN spaces (two for line breaking) #下面要是空白一行
+
+```
+
+
+```{r}
+A = 300
+
+if (A < 5) {
+    print("I am small.") # Four spaces
+} else {
+    print("I am large.") # Four spaces
+    if (A > 50) {
+        print( # Eight spaces
+         "I am more than 50.") # TEN spaces (two for line breaking) #下面要是空白一行
+    }
+}
+# EOF
+```
+
+```{r}
+library(magrittr) # in order to use %>% operand
+
+validate_c = function(c){
+  assertthat::assert_that(
+    is(c, "list") && 
+      c %>% purrr::every(is.numeric) && 
+      length(c)==2,
+    msg = "Only numeric list of length 2 is possible to sit inside the choice set."
+  )
+  
+  if(
+    10*c$x + 25*c$y <= 10000
+  ){
+    return(c)
+  } else {
+    return(NA)
+  }
+}
+```
+
+```{r}
+c1 <- list(x=10, y=20)
+validate_c(c1)
+
+c2 <- list(x=500, y=10000)
+validate_c(c2)
+
+c3 <- c(x=50, y=10)
+try(validate_c(c3)) # 確保有error也不中斷script執行
+```
+
+```{python}
+a = "hello"
+a.__class__
+```
+
+```{python}
+dict0 = dict({})
+dict0.__class__
+
+```
+
+```{python}
+int0 = 5
+not_int0 = 5.5
+
+int0.__class__ #int
+not_int0.__class__ #float
+
+```
+
+```{python}
+def is_numeric(x):
+    if type(x) is int or type(x) is float:
+        return True
+    else:
+        return False
+
+#EOF
+```
+
+```{python}
+dict1 = {"a": 5, "b": 0.7}
+
+(type(dict1["a"]) is int or type(dict1["a"]) is float) and (type(dict1["b"]) is int or type(dict1["b"]) is float)
+type(dict1["a"]) is not str
+
+#EOF
+```
+
+```{python}
+numVec2 = [5, 5.5, 10, 11.3, 12.5]
+
+lgl2 = [False] * len(numVec2)
+
+for i in range(len(numVec2)):
+  lgl2[i] = numVec2[i].__class__ is float
+
+print(lgl2)
+
+#EOF
+```
+
+```{python}
+lgl2 = [lgl2[i] = numVec2[i].__class__ is float for i in range(len(numVec2))]
+
+print(lgl2)
+
+#EOF
+```
+
