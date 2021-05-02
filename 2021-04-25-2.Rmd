@@ -1,0 +1,308 @@
+---
+title: "2021-04-25-2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Makecondition
+
+```{r makecondition}
+library(reticulate)
+use_condaenv("r-reticulate")
+
+library(econR) # 經濟模型程式設計專題用
+```
+
+## Install packages
+
+Through Conda:
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"))
+```
+
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("scipy", "pandas"))
+```
+
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("requests", "pandas"))
+```
+
+Through PyPI:
+```{r, eval=FALSE}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"),
+              pip = TRUE)
+```
+
+
+## Codes
+
+```{python}
+print("Hello, world.")
+```
+
+##Ch6
+
+```{r}
+xfun::download_file("https://www.dropbox.com/s/cyp43ve6wyqnof1/consumers.py?dl=1", mode="wb")
+#和下方56~59的python一樣概念，後面的wb是為了預防其為非文字檔
+```
+
+```{python}
+import requests
+
+response = requests.get("https://www.dropbox.com/s/cyp43ve6wyqnof1/consumers.py?dl=1")
+output_file_object = open("consumers.py", "w")
+output_file_object.writelines(response.text)
+output_file_object.close()
+
+from pathlib import Path
+currentPath = Path()
+if currentPath.cwd() not in sys.path: #current working directory 如果目前的路徑不在它找的到東西的sys.path裡面的話
+    sys.path.append(currentPath.cwd()) #那就幫我加current path進去sys.path裡
+
+import consumers as cs
+from numpy.random import default_rng
+rng_alpha = default_rng(2020)
+rng_beta = default_rng(3892)
+
+size = 500
+consumers500 = [
+    cs.Consumer(alpha, beta) for alpha, beta in zip(rng_alpha.uniform(300,500,size), rng_beta.uniform(5,30,size))
+]
+```
+
+##Ch6.1
+
+```{python}
+class Monopoly:
+    def __init__(self, mc, Qd):
+        self.mc=mc
+        self.Qd=Qd
+    
+    def cost(self, p):
+        return self.mc*self.Qd(p)
+    def revenue(self, p):
+        return p*self.Qd(p)
+    def profit(self, p):
+        return p*self.Qd(p) - self.mc *self.Qd(p)
+
+```
+
+```{python}
+def Qd(p):
+  return 100-2*p
+
+monopoly = Monopoly(5, Qd)
+
+#instance variable
+monopoly.mc
+
+#instance method
+monopoly.Qd(3)
+monopoly.cost(3)
+monopoly.profit(3)
+```
+
+```{python}
+import numpy as np
+def Qd(p):
+    return np.maximum(np.zeros(len(p)),100-2*p)
+    # np.zeros: generate array of zeros
+    # np.maximum: compare two arrays elementwise and choose the maximal one
+
+prices = np.arange(1,101)
+Qd(prices) #告訴你在不同價格下會買多少
+```
+
+```{python}
+from scipy import optimize
+
+monopoly=Monopoly(2, Qd)
+monopoly.cost(np.array([3]))
+monopoly.revenue(np.array([3]))
+monopoly.profit(np.array([3]))
+```
+
+```{python}
+def negative_conversion(fn): #轉成負函數
+    def neg_fun(p):
+        return -1*fn(p)
+    return neg_fun
+```
+
+```{python}
+objective=negative_conversion(monopoly.profit)
+```
+
+```{python}
+monopoly.profit(np.array([3]))
+objective(np.array([3]))  #兩者就差了個負號
+```
+
+```{python}
+def monopoly_optim(x0=3):
+    optim = optimize.minimize(
+      fun=negative_conversion(monopoly.profit),
+      x0=np.array([x0])
+    )
+    return optim
+
+monopoly_optim() #因為本來是mc令5，後來改令2，如果令5就跟影片結果相同
+```
+
+```{python}
+class Monopoly:
+    def __init__(self, mc, Qd):
+        self.mc=mc
+        self.Qd=Qd
+    
+    def cost(self, p):
+        return self.mc*self.Qd(p)
+    def revenue(self, p):
+        return p*self.Qd(p)
+    def profit(self, p):
+        return p*self.Qd(p) - self.mc *self.Qd(p)
+    def optimize(self, x0=3):
+        optim = optimize.minimize(
+          fun=negative_conversion(self.profit),
+          x0=np.array([x0])
+        )
+        self.optim_p = optim.x
+        self.optim_q = self.Qd(self.optim_p)
+        return optim
+
+```
+
+```{python}
+monopoly2 = Monopoly(5, Qd)
+#instance variable
+monopoly2.mc
+#instance variable
+monopoly2.profit(3)
+monopoly2.cost(3)
+monopoly2.revenue(3)
+monopoly2.optimize() #一旦執行這個會產生以下新的instance variable
+
+#new instance variable
+monopoly2.optim_p
+monopoly2.optim_q
+```
+
+##ch6.2
+```{python}
+class MarketDemand:
+    def __init__(self, intercept, slope):
+        self.intercept = intercept
+        self.slope = slope
+    def Qd(self, p):
+        return self.intercept - self.slope * p
+
+```
+
+```{python}
+marketDemand = MarketDemand(500, 7)
+marketDemand.Qd(3)
+
+monopoly3 = Monopoly(5, marketDemand.Qd)
+#現在monopoly3的需求函數即由MarketDemand所面臨的截距500，斜率7該線所決定
+monopoly3.optimize()
+monopoly3.optim_p
+monopoly3.optim_q
+```
+
+```{python}
+import numpy as np 
+from scipy import optimize
+
+class Monopoly:
+    intercept=100
+    slope=2
+    
+    def __init__(self, mc):
+        self.mc=mc
+    
+    def cost(self, p):
+        return self.mc*self.__class__.Qd(p)
+    def revenue(self, p):
+        return p*self.__class__.Qd(p)
+    def profit(self, p):
+        return p*self.__class__.Qd(p) - self.mc *self.__class__.Qd(p)
+    def optimize(self, x0=3):
+        optim_res = optimize.minimize(
+          fun=negative_conversion(self.profit),
+          x0=np.array([x0])
+        )
+        self.optim_p = optim_res.x
+        self.optim_q = self.__class__.Qd(self.optim_p)
+        return optim_res
+    
+    @classmethod
+    def Qd(cls, p):
+        return cls.intercept - cls.slope*p
+
+# helper
+def negative_conversion(fn):
+    def neg_fun(p):
+        return -1*fn(p)
+    return neg_fun
+
+```
+
+```{python}
+monopoly4 = Monopoly(5) #現在就只需要給mc就好
+
+#class variable:
+Monopoly.intercept #原始給100
+Monopoly.slope #原始給2
+
+#instance variable:
+monopoly4.mc
+
+#instance method:
+monopoly4.optimize()  #舉一個optim就好懶的打了
+
+#new additional instance variable:
+monopoly4.optim_p
+monopoly4.optim_q
+```
+
+```{python}
+#可直接更改截距和斜率
+
+Monopoly.intercept = 300
+Monopoly.slope = 8
+
+monopoly4.optimize()  #optimize的結果就隨時更新
+monopoly4.optim_p
+monopoly4.optim_q
+```
+
+```{python}
+#不過呢，像上面已經把intercept、slope改成了300、8，就表示已經把我在190、191所打的100、2給替換掉了，所以如果我這時生成一個新的monopoly5，他會follow的Qd是(intercept,slope)為(300,8)的Qd而非原始的(100,2)要注意
+
+monopoly5 = Monopoly(5)
+
+monopoly5.optimize() #結果會和改過的monopoly4相同
+monopoly5.optim_p
+monopoly5.optim_q
+```
+
+```{python}
+Monopoly.intercept = 100
+Monopoly.slope = 2
+
+monopoly5 = Monopoly(5)
+
+monopoly5.optimize() #所以要重回(100,2)的結果的話，只能重令class variable的intercept和slope
+monopoly5.optim_p
+monopoly5.optim_q
+```
+

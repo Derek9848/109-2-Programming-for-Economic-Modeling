@@ -1,0 +1,256 @@
+---
+title: "2021-03-21-ch4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Makecondition
+
+```{r makecondition}
+library(reticulate)
+use_condaenv("r-reticulate")
+
+library(econR) # 經濟模型程式設計專題用
+```
+
+## Install packages
+
+Through Conda:
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"))
+```
+
+Through PyPI:
+```{r, eval=FALSE}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"),
+              pip = TRUE)
+```
+
+
+## Codes
+
+```{python}
+dict0 = {"apple":2, "banana":3}
+dict0.__class__
+
+help(dict.clear) # class.method
+help(dict.fromkeys)
+```
+
+```{python}
+import math # most math functions are in this module
+
+I = 50
+P_apple = 5
+P_banana = 7
+
+    x1 = 3  #對應ch3 綜合練習2.1
+    x2_max = math.floor((I-5*x1)/P_banana) # 無條件捨去
+    list_x1 = [(x1, x2) for x2 in range(x2_max+1)]
+    
+print(list_x1)
+
+# EOF
+```
+
+```{python}
+import math # most math functions are in this module
+
+I = 50
+P_apple = 5
+P_banana = 7
+
+x1_max = math.floor(I / P_apple)
+
+X = []  #也可以 X = list()
+for x1 in range(x1_max+1):
+    x2_max = math.floor((I-5*x1)/P_banana) # 無條件捨去
+    list_x1 = [(x1, x2) for x2 in range(x2_max+1)]
+    X.extend(list_x1)
+
+print(X)
+# EOF
+```
+
+```{python}
+def U_cobbDouglas(x, params=(1,1)):
+    assert (
+      type(x) is tuple
+      and len(x) == 2
+      and all([type(xi) is int for xi in range(len(x))])
+    ), "Alternative should be a tuple of two integers"
+    
+    alpha, beta = params
+    x1, x2 = x
+    u = x1**alpha * x2**beta
+    
+    return u
+
+
+# EOF
+```
+
+```{python}
+try: 
+    U_cobbDouglas([2,3]) 
+except: 
+    "Error"  #錯誤訊息在此輸入
+
+U_cobbDouglas((2,3))
+U_cobbDouglas((3,4))
+```
+
+prototyping
+```{python}
+dict0 = ({})
+alpha,beta = (1,1)
+key = X[0]
+dict0.update({key: key[0]**alpha * key[1]**beta })
+key = X[1]
+dict0.update({key: key[0]**alpha * key[1]**beta }) #..and so on...
+
+print(dict0)
+```
+
+for-loop
+```{python}
+for key in X :
+  dict0.update({key: key[0]**alpha * key[1]**beta })
+  
+print(dict0)
+```
+
+```{python}
+#也可以
+dict0 = {key: key[0]**alpha * key[1]**beta for key in X}
+
+print(dict0)
+```
+
+```{r}
+p_x1=5; p_x2=7; I=100
+
+consumer <- new.env()
+
+consumer$params <- c(1,1)
+
+consumer$preference <- function(x, params=consumer$params){
+  assertthat::assert_that(
+    is.numeric(x)
+    && length(x) == 2,
+    msg="alternative must be a vector of 2 numeric values"
+  )
+  
+  u = x[[1]]**params[[1]] * x[[2]]**params[[2]]
+  
+  return(u)
+}
+
+consumer$validate_c <- function(x){
+  assertthat::assert_that(
+    is.numeric(x)
+    && length(x) == 2,
+    msg="alternative must be a vector of 2 numeric values"
+  )
+  
+  if(p_x1*x[[1]]+p_x2*x[[2]] <= I){
+    return(x)
+  } else {
+    return(NA)
+  }
+}
+```
+
+```{r}
+p_x1=5; p_x2=7; I=100
+
+Consumer = function(params){
+  
+  consumer <- new.env()
+
+  consumer$params <- params # replace c(1,1)
+  
+  consumer$preference <- function(x, params=consumer$params){
+    assertthat::assert_that(
+      is.numeric(x)
+      && length(x) == 2,
+      msg="alternative must be a vector of 2 numeric values"
+    )
+    
+    u = x[[1]]**params[[1]] * x[[2]]**params[[2]]
+    
+    return(u)
+  }
+  
+  consumer$validate_c <- function(x){
+    assertthat::assert_that(
+      is.numeric(x)
+      && length(x) == 2,
+      msg="alternative must be a vector of 2 numeric values"
+    )
+    
+    if(p_x1*x[[1]]+p_x2*x[[2]] <= I){
+      return(x)
+    } else {
+      return(NA)
+    }
+  }
+  
+  return(consumer)
+}
+```
+
+```{python}
+class Consumer:
+    def __init__(self, params, income):
+        self.params = params
+        self.income = income
+        
+    def preference(self, x):
+        assert (
+          type(x) is tuple
+          and len(x) == 2
+          and all([type(x[i]) is int for i in range(len(x))])
+          ), "Alternative should be a tuple of two integers"
+        
+        alpha, beta = self.params
+        x1, x2 = x
+        u = x1**alpha * x2**beta
+        return u
+        
+    def validate_c(self, c):
+        assert (
+          type(c) is tuple # alternative must be a tuple
+          and len(c) == 2
+          and all([ type(ci) is int or type(ci) is float for ci in c]) # all returns one True/False
+          ), "c must be a tuple of two numbers."
+        x1, x2 = c
+        income = self.income
+        assert(
+          type(income) is int), "income must be int type of number."
+        if 5*x1+7*x2 <= income : # alternative must lie inside the budget constraint
+            return c
+        else:
+            return "exceed budget line"
+
+# EOF
+```
+
+```{python}
+consumer23_100 = Consumer((2,3), 100)
+consumer23_100.params
+consumer23_100.preference((2,5))
+consumer23_100.validate_c((2,5))
+```
+
+```{python}
+reticulate::repl_python() #在console要輸入此才會切成Python console
+exit #要回到R console，在Python console輸入exit
+
+```
+

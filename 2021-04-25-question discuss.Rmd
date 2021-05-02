@@ -1,0 +1,265 @@
+---
+title: "2021-04-25-question discuss"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Makecondition
+
+```{r makecondition}
+library(reticulate)
+use_condaenv("r-reticulate")
+
+library(econR) # 經濟模型程式設計專題用
+```
+
+## Install packages
+
+Through Conda:
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"))
+```
+
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("scipy", "pandas"))
+```
+
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("requests", "pandas"))
+```
+
+Through PyPI:
+```{r, eval=FALSE}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"),
+              pip = TRUE)
+```
+
+
+## Codes
+
+```{python}
+print("Hello, world.")
+```
+
+##5.6 class method Define a Consumer class that has:(但其實在5.5最後)
+
+```{python}
+class Consumer:
+    prices=(2,3)
+    Xprice=prices[0]
+    Yprice=prices[1]
+    def __init__(self, params):
+        assert (
+          type(params) is tuple #check params's type
+          and len(params) == 2  #check params's length
+          and all([type(paramsi) is int or type(paramsi) is float for paramsi in params])
+        ),"params must be a tuple of two numbers."
+        self.alpha,self.I= params
+        self.c_optimX=0
+        self.c_optimY=0
+        self.c_optim= [self.c_optimX,self.c_optimY]
+    def U(self,p): #Utility Function
+        assert(
+          type(p) is tuple #check x's type
+          and len(p) == 2  #check x's length
+          and all([ type(xi) is int or type(xi) is float for xi in p])
+        ),"x must be a tuple of two numbers."
+        Xprice,Yprice=list(p)
+        return self.__class__.Xprice**self.alpha*self.__class__.Yprice**(1-self.alpha)
+    def optimise(self):
+        from scipy import optimize
+        import numpy as np
+        def U(xnum,ynum):
+          return -(xnum**self.alpha*ynum**(1-self.alpha)) #take negative for minimization purpose
+        def const_nonNeg(xnum,ynum):
+          return self.I-Consumer.prices[0]*xnum-Consumer.prices[1]*ynum
+        def convert2arrayInputFunction(f0):
+          def newFun(x_array):
+            return f0(*x_array)
+          return newFun
+        newU = convert2arrayInputFunction(U)
+        newConst_nonNeg = convert2arrayInputFunction(const_nonNeg)
+        ## Define optimization question
+        const_dict = ({ "type": "ineq",# change to "eq" for equality constraint
+        "fun": newConst_nonNeg
+        })
+        x0 = np.array([1,1])
+        optimize.minimize(
+        fun = newU, x0=x0,
+        constraints = const_dict
+        )
+        res=optimize.minimize(
+        fun = newU, x0=x0,
+        constraints= const_dict
+        )
+        # update instance variables
+        self.c_optimX=res.x[0]
+        self.c_optimY=res.x[1]
+        self.c_optim= [round(self.c_optimX),round(self.c_optimY)]
+
+```
+
+#判斷分類一下:
+class variables
+```{python}
+Consumer.prices
+Consumer.Xprice
+Consumer.Yprice
+```
+
+```{python}
+# instance method
+consumer_A.U
+consumer_A.optimise
+
+# instance variables
+consumer_A.alpha
+consumer_A.I
+consumer_A.c_optimX
+consumer_A.c_optimY
+consumer_A.c_optim
+```
+
+##測試
+```{python}
+params_A = (0.2, 500) # (alpha, I)
+consumer_A = Consumer(params_A)
+
+params_B = (0.8, 200)
+consumer_B = Consumer(params_B)
+
+consumer_A.prices # (2, 3)
+consumer_B.prices # both show market prices
+
+c0 = (2,3)
+consumer_A.U(c0) 
+consumer_B.U(c0) # show utilities of c0 for both consuemrs
+
+consumer_A.optimise()
+consumer_B.optimise() # show the optimisation result, and afterward
+
+consumer_A.c_optim
+consumer_B.c_optim # show the optimised c bundle
+
+Consumer.prices = (5, 8)
+consumer_A.optimise()
+consumer_B.optimise() # show the optimisation result, and afterward
+
+consumer_A.c_optim
+consumer_B.c_optim # show the optimised c bundle
+
+consumer_A.I = 300
+consumer_A.optimise()
+consumer_A.c_optim
+```
+
+##補充說明，要在裡面用到class variable 的時候，兩種做法
+```{python}
+class Consumer:
+    prices=(2,3)
+    Xprice=prices[0]
+    Yprice=prices[1]
+    
+    ...
+    
+    #instance_method
+    def instance_method(self, ...):
+        self.__class__.Xprice
+        
+    @staticmethod   #以後都盡量用classmethod，少用這個
+    def statice_method(...):
+        Consumer.Xprice
+    
+    @classmethod
+    def class_method(cls,...):
+        cls.Xprice
+```
+
+##另一個寫法
+```{python}
+def convert2arrayIF(f0):
+    def newFun(x_array):
+      return f0(*x_array)
+    return newFun
+
+
+class Consumer_opt:
+    prices = (2,3) #Class Variables
+    
+    def __init__(self, params, I): #Define class attribute
+        self.I = I
+        self.params = params
+    
+    def U(self, c):
+        x, y = c
+        alpha = self.params
+        U = x**alpha * y**(1-alpha)
+        self.c0 = c
+        return U
+    
+    def optimize(self):
+        from scipy import optimize
+        def U_Model(x,y):
+          alpha = self.params
+          U = x**alpha * y**(1-alpha)
+          return -U
+        
+        def const_nonNeg(x,y):
+            p1, p2 = Consumer_opt.prices
+            I = self.I
+            return self.I-x*p1-y*p2
+        
+        
+        new_U_Model = convert2arrayIF(U_Model)
+        new_const_nonNeg = convert2arrayIF(const_nonNeg)
+        new_const = ({ "type": "ineq", "fun": new_const_nonNeg})
+        #type參數設定為'eq'表示等式約束,設定為'ineq'表示不等式約束
+        #fun參數設定約束表達式，僅輸入表達式左邊，默認為左邊小於或等於0
+        #https://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html#defining-bounds-constraints
+        #上面裡的Sequential Least SQuares Programming (SLSQP) Algorithm (method='SLSQP')可供參考
+        opt_result = optimize.minimize(fun=new_U_Model, x0=self.c0,constraints=new_const)
+        self.opt_result = opt_result
+        self.c_optim = [self.opt_result.x[0], self.opt_result.x[1]]
+        return self.opt_result
+
+```
+
+```{python}
+params_A = (0.2) # (alpha)
+consumer_A = Consumer_opt(params_A, 500)
+
+params_B = (0.8)
+consumer_B = Consumer_opt(params_B, 200)
+
+consumer_A.prices # (2, 3)
+consumer_B.prices # both show market prices
+
+c0 = (2,3)
+consumer_A.U(c0) 
+consumer_B.U(c0) # show utilities of c0 for both consuemrs
+
+consumer_A.optimize()
+consumer_B.optimize() # show the optimisation result, and afterward
+
+consumer_A.c_optim
+consumer_B.c_optim # show the optimised c bundle
+
+Consumer_opt.prices = (5, 8)
+consumer_A.optimize()
+consumer_B.optimize() # show the optimisation result, and afterward
+
+consumer_A.c_optim
+consumer_B.c_optim # show the optimised c bundle
+
+consumer_A.I = 300
+consumer_A.optimize()
+consumer_A.c_optim
+```
+

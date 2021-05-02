@@ -1,0 +1,160 @@
+---
+title: "2021-04-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Makecondition
+
+```{r makecondition}
+library(reticulate)
+use_condaenv("r-reticulate")
+
+library(econR) # 經濟模型程式設計專題用
+```
+
+## Install packages
+
+Through Conda:
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"))
+```
+
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("scipy", "pandas"))
+```
+
+Through PyPI:
+```{r, eval=FALSE}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"),
+              pip = TRUE)
+```
+
+
+## Codes
+
+```{python}
+print("Hello, world.")
+```
+
+##5.6
+
+```{python}
+from numpy.random import default_rng
+rng_alpha = default_rng(2020)
+rng_beta = default_rng(2022)
+
+consumers500 = [ Consumer(alpha, beta) for alpha, beta in zip(rng_alpha.uniform(300,500, size=500), rng_beta.uniform(20, 100, size=500))]
+#還沒寫完不能work
+```
+
+```{python}
+def qd_generator(alpha, beta):
+    def qd(p):
+        return max(0, alpha-beta*p)
+    return qd
+
+class Consumer:
+    def __init__(self, alpha, beta):
+        self.alpha=alpha
+        self.beta=beta
+        self.qd = qd_generator(alpha, beta)
+
+```
+
+```{python}
+consumer300_20 = Consumer(300,20)
+consumer450_40 = Consumer(450,40)
+
+consumer300_20.qd(5)
+consumer450_40.qd(5)
+#檢查一下能不能跑而已
+
+```
+
+```{python}
+from numpy.random import default_rng
+
+def qd_generator(alpha, beta):
+    def qd(p):
+        return max(0, alpha-beta*p)
+    return qd
+
+class Consumer:
+    def __init__(self, alpha, beta):
+        self.alpha=alpha
+        self.beta=beta
+        self.qd = qd_generator(alpha, beta)
+#因為有先定義consumer了所以可以結合起來跑
+rng_alpha = default_rng(2020)
+rng_beta = default_rng(2022)
+
+consumers500 = [ Consumer(alpha, beta) for alpha, beta in zip(rng_alpha.uniform(300,500, size=500), rng_beta.uniform(20, 100, size=500))]
+```
+
+```{python}
+consumers500[99].qd(3) #第100個消費者在價格3時的消費量
+```
+
+```{python}
+def Qd(p):
+    total = 0
+    for x in range(len(consumers500)):
+      total+=consumers500[x].qd(p)
+      #mutable+，對於一個可變值(如total)，在他後面給個+的意思近似於mutable.addtomyself()，即total.addtomyself
+      #total = total + consumers500[x].qd(p) 這樣寫也是可，只是會多耗記憶體
+    return total
+
+Qd(3)
+```
+
+```{python}
+class Consumer:
+    consumers500 = [] #因為classmethod裡面會用到所以要先生成
+    
+    def __init__(self, alpha, beta):
+        self.alpha=alpha
+        self.beta=beta
+        self.qd = qd_generator(alpha, beta)
+        self.__class__.consumers500.append(self)
+        #append裡面要加進去的是instance(即前面alphabeta所生成的每個消費者個體)，而此時的instance就是self本身
+        #呼叫一個class前面要加的是 instance.__class__. 在這裡instance也是self
+    
+    @classmethod #staticmethod class比較萬用，前面打cls即可
+    def Qd(cls, p):
+        total = 0
+        for x in range(len(cls.consumers500)):  #注意都要補cls.
+          total+=cls.consumers500[x].qd(p) #注意都要補cls.
+          #mutable+，對於一個可變值(如total)，在他後面給個+的意思近似於mutable.addtomyself()，即total.addtomyself
+          #total = total + consumers500[x].qd(p) 這樣寫也是可，只是會多耗記憶體
+        return total
+
+```
+
+```{python}
+#class variable
+Consumer.consumers500
+
+#instance variable
+consumer.alpha
+consumer.beta
+consumer.qd #比較像是instance method
+
+#class method
+Consumer.Qd
+```
+
+```{python}
+consumer1 = Consumer(500, 10)
+consumer2 = Consumer(299, 5)
+
+Consumer.consumers500[0].alpha
+Consumer.consumers500[1].alpha
+Consumer.Qd(3)
+```

@@ -1,0 +1,219 @@
+---
+title: "2021-04-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Makecondition
+
+```{r makecondition}
+library(reticulate)
+use_condaenv("r-reticulate")
+
+library(econR) # 經濟模型程式設計專題用
+```
+
+## Install packages
+
+Through Conda:
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"))
+```
+
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("scipy", "pandas"))
+```
+
+Through PyPI:
+```{r, eval=FALSE}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"),
+              pip = TRUE)
+```
+
+
+## Codes
+
+```{python}
+print("Hello, world.")
+```
+
+```{r}
+# R
+xfun::download_file("https://www.dropbox.com/s/49y23ib21ncylyh/consumer.R?dl=1")
+# Py
+xfun::download_file("https://www.dropbox.com/s/u05jezbxt99z8ho/consumer.py?dl=1")
+
+#做好的放在.py檔 <- python
+#做好地放在.R檔 <- R
+```
+
+```{r}
+#使用這些存好的小程式:source
+source("consumer.R") #不是package的話，庚動後重新source一次就可以改了
+devtools::unload(dplyr) #也可以用這個砍掉重載
+
+consumer11 <- Consumer(c(1,1)) # preference: x*y
+consumer35 <- Consumer(c(3,5)) # preference: x**3 * y**5
+```
+
+
+```{python}
+sys.path.extend(['C:/Users/USER/Desktop/model1092/Rmd'])
+sys.path #看現在有啥路徑
+```
+
+```{python}
+import consumer as cs # create an acronym for easy module access
+consumer0 = cs.Consumer((3,7))
+```
+
+```{r}
+fr <- function(x1,x2) {   ## Rosenbrock Banana function
+
+    100 * (x2 - x1 * x1)^2 + (1 - x1)^2
+} #雖然這樣一樣可以求解，但並不符合optim required
+```
+
+```{python}
+from scipy import optimize
+import numpy as np
+
+help(optimize.minimize)
+```
+
+```{python}
+mat_1d = np.array([1.1, 1.2])
+
+print(mat_1d)
+```
+
+```{python}
+X = np.array([-1.2, 1])
+x1 = X[0]
+x2 = X[1]
+100 * (x2 - x1 * x1)**2 + (1 - x1)**2
+```
+
+```{python}
+def fr(X):
+    x1 = X[0]
+    x2 = X[1]
+    return 100 * (x2 - x1 * x1)**2 + (1 - x1)**2
+
+```
+
+```{python}
+optimize.minimize(
+  fun = fr,
+  x0 = X
+)
+```
+
+```{python}
+def U(x,y):
+  return -(x**0.2 * y**0.8) # take negative for minimization purpose
+```
+
+```{python}
+def newU(CX):
+    x = cx[0]
+    y = cx[1]
+    return U(x, y)
+```
+
+```{python}
+cx = np.array([1, 1])
+newU(cx)
+```
+
+```{python}
+def npU(U):
+    def newU(CX):
+      x = cx[0]
+      y = cx[1]
+      return U(x, y)
+    return newU
+```
+
+```{python}
+def np_rize(U):   
+    def newU(CX):
+      x = cx[0]
+      y = cx[1]
+      return U(x, y)
+    return newU
+#np化小程式
+```
+
+
+
+```{python}
+def const_nonNeg(x,y):
+    return 500-2*x-3*y
+```
+
+```{python}
+def convert2arrayInputFunction(f0):
+   def newFun(x_array):
+       return f0(*x_array)
+   return newFun
+```
+
+```{python}
+newU = convert2arrayInputFunction(U)
+newConst_nonNeg = convert2arrayInputFunction(const_nonNeg)
+
+x = np.array([2,3])
+newU(x)
+newConst_nonNeg(x)
+```
+
+```{python}
+x0 = np.array([1,1])
+
+const_dict = ({ "type": "ineq", # change to "eq" for equality constraint
+  "fun": newConst_nonNeg
+})
+
+optimize.minimize(
+  fun = newU, x0=x0,
+  constraints= const_dict
+)
+```
+
+###完整的一個求極小化過程
+```{python}
+def U(x,y):
+  return -(x**0.2 * y**0.8) # take negative for minimization purpose  #定義效用函數
+
+def const_nonNeg(x,y):
+    return 500-2*x-3*y #定義預算限制式
+
+def convert2arrayInputFunction(f0):    #為了np化所需要的轉換小程式
+   def newFun(x_array):
+       return f0(*x_array)
+   return newFun
+
+newU = convert2arrayInputFunction(U)#轉換效用函數u變成newU(符合np形式)
+newConst_nonNeg = convert2arrayInputFunction(const_nonNeg) #轉換預算限制式const變成newconst(符合np形式)
+
+##define optimization question
+const_dict = ({ "type": "ineq", # change to "eq" for equality constraint 指可不可以在線上
+  "fun": newConst_nonNeg
+}) #tuple of dictionary之形式，有幾個dictionary就表示有幾個限制式
+
+##開始求極值
+x0 = np.array([1,1]) #要給一個起始值
+
+optimize.minimize(
+  fun = newU, x0=x0,
+  constraints= const_dict
+)
+```
+

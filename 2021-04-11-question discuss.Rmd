@@ -1,0 +1,150 @@
+---
+title: "ch4 question"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Makecondition
+
+```{r makecondition}
+library(reticulate)
+use_condaenv("r-reticulate")
+
+library(econR) # 經濟模型程式設計專題用
+```
+
+## Install packages
+
+Through Conda:
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"))
+```
+
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("scipy", "pandas"))
+```
+
+Through PyPI:
+```{r, eval=FALSE}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"),
+              pip = TRUE)
+```
+
+
+## Codes
+
+```{python}
+print("Hello, world.")
+```
+
+#Utility generator
+
+#4.1
+```{python}
+class CES:
+    def __init__(self, params):
+        assert(
+          type(params) is tuple
+          and len(params) == 3
+          and all([ type(paramsi) is int or type(paramsi) is float for paramsi in params])
+        ),"params must be a tuple of three numbers."
+        self.params = params
+    
+    def U(self,x):
+        assert(
+          type(x) is tuple
+          and len(x) == 2
+          and all([ type(xi) is int or type(xi) is float for xi in x])
+        ),"x must be a tuple of two numbers."
+        alpha1, alpha2, rho = self.params
+        x1,x2=x
+        u = (alpha1*(x1**rho)+alpha2*(x2**rho))**(1/rho)
+        return u
+
+```
+
+```{python}
+alpha1, alpha2, rho = (2, 3, 5)
+params = (alpha1, alpha2, rho)
+ces = CES(params)
+x = (1, 10)
+ces.U(x) # show the utility levels of x given alpha1, alpha2, rho preference parameter values
+```
+
+
+#4.2
+```{python}
+import types
+class QL:
+    def __init__(self,functionq,paramb):
+        assert(
+          type(functionq) is types.FunctionType #檢視q是否為方程式(只能用這個方式check)
+          and ((type(b) is int) or (type(b) is float))
+        ),"params must be a function and a numbers."
+        self.q = functionq
+        self.b = paramb
+    def U(self,x):
+        assert(
+          type(x) is tuple
+          and len(x) == 2
+          and all([type(xi) is int or type(xi) is float for xi in x])
+        ), "x must be a tuple of two numbers."
+        xi1,xi2=x
+        return self.q(xi1)+self.b*xi2
+
+```
+
+```{python}
+import math
+def q(x1):
+    return math.log(x1)
+```
+
+```{python}
+b = 2
+ql = QL(q, b)
+x = (2, 5)
+ql.U(x) # returns the utility levels of x given q(x1) and b
+```
+
+#zip
+```{python}
+from numpy.random import default_rng
+rng1 = default_rng(293)
+rng2 = default_rng(283)
+rng_zip = zip(rng1.uniform(50,100, size=3), rng2.uniform(2,10, size=3))
+list(rng_zip)
+```
+
+```{python}
+rng1 = default_rng(293)
+rng2 = default_rng(283)
+qs = [ alpha - beta*p for alpha, beta in zip(rng1.uniform(50, 100, size=3), rng2.uniform(2, 10, size=3))]
+qs
+```
+
+```{python}
+X = ["a", "b", "c"]
+Y = [2, 3, 5]
+zip_xy = zip(X, Y)
+list(zip_xy)
+```
+
+```{python}
+iter_xy = iter(zip_xy)
+next(iter_xy)
+```
+
+```{python}
+X = ["a", "b", "c"]
+Y = [2, 3, 5]
+dict_xy = { key: value for (key, value) in zip(X, Y)}
+print(dict_xy)
+```
+
