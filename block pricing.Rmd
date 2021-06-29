@@ -1,0 +1,273 @@
+---
+title: "block pricing"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Makecondition
+
+```{r makecondition}
+library(reticulate)
+use_condaenv("r-reticulate")
+
+library(econR) # 經濟模型程式設計專題用
+```
+
+## Install packages
+
+Through Conda:
+
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("numpy", "pandas"))
+```
+
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("scipy", "pandas"))
+```
+
+## Codes
+
+#1.Uniform price situation 以一般數值算式求解
+```{python}
+class Monopoly:  #under uniform price situation
+    intercept = 200  # the demand curve's intercept (firm's faced)
+    slope = 0.5      # the demand curve's slope (firm's faced)
+    
+    def __init__(self, mc): #assumed there are no fixed cost
+        self.mc = mc
+    def p(self, mc):
+        return self.__class__.intercept - self.__class__.slope * self.__class__.Qd(mc)
+    def profit(self, mc):
+        return (self.p(mc) - mc) * self.__class__.Qd(mc)
+    
+    @classmethod
+    def Qd(cls, mc):
+        return (cls.intercept - mc)/(cls.slope * 2)
+
+```
+
+```{python}
+mc = 50   #為alterable,可改變 marginal cost看整體影響
+monopoly1 = Monopoly(mc) # only need to give marginal cost
+
+monopoly1.mc
+monopoly1.Qd(mc)
+monopoly1.p(mc)
+monopoly1.profit(mc)
+
+```
+
+#1-2.如果使用optimize.minimize求解?
+```{python}
+from scipy import optimize
+import numpy as np
+
+```
+
+```{python}
+class retryMonopoly:
+    intercept = 400  #原式為 p=200-0.5Q 換邊得 Q=400-2p
+    slope = 2
+    
+    def __init__(self, mc):
+        self.mc = mc
+    
+    def profit(self, p):
+        return p * self.__class__.Qd(p) - self.mc * self.__class__.Qd(p)
+    def optimize(self, x0=2):
+        optim_result = optimize.minimize(
+          fun=negative_conversion(self.profit),
+          x0=np.array([x0])
+        )
+        self.optim_p = optim_result.x
+        self.optim_q = self.__class__.Qd(self.optim_p)
+        return optim_result
+    
+    @classmethod
+    def Qd(cls, p):
+        return cls.intercept - cls.slope*p
+
+# covert to negative function
+def negative_conversion(fn):
+    def neg_fun(p):
+        return -1*fn(p)
+    return neg_fun
+```
+
+```{python}
+mc = 50   #為alterable,可改變 marginal cost看整體影響
+monopoly1 = Monopoly(mc) # only need to give marginal cost
+
+monopoly1.mc
+monopoly1.Qd(mc)
+monopoly1.p(mc)
+monopoly1.profit(mc)
+
+retryMonopoly1 = retryMonopoly(mc)
+retryMonopoly1.Qd(monopoly1.p(mc))
+retryMonopoly1.profit(monopoly1.p(mc))
+
+retryMonopoly1.optimize()
+retryMonopoly1.optim_p  #close to 125
+retryMonopoly1.optim_q  #close to 150
+                        #最適結果會是一致的
+
+```
+
+#2.Now firm want's to improve its profits by implementing block pricing.
+#  suppose the company were to sell the first block at the price determined in the uniform price situation.
+#  (即給定p1、Q1為上面所解出的p、q，求算第二區塊之定價和產量以及block pricing下之extra profit)
+
+#2-1.以一般數值算式求解block pricing(First block been limited.)
+```{python}
+#此時p1 = 125, Q1 = 150,求p2,Q2 (如果有改數字就不會是這個狀況，不過這裡假設如此)
+
+class Twoblocks:
+    intercept = 200  # the demand curve's intercept (firm's faced)
+    slope = 0.5      # the demand curve's slope (firm's faced)
+    
+    def __init__(self, mc): #assumed there are no fixed cost
+        self.mc = mc
+    def p(self, mc):
+        return self.__class__.intercept - self.__class__.slope * (monopoly1.Qd(mc)+self.__class__.Qd(mc))
+    def profit(self, mc):
+        return (self.p(mc) - mc) * self.__class__.Qd(mc)
+    
+    @classmethod
+    def Qd(cls, mc):
+        return (cls.intercept - (cls.slope * monopoly1.Qd(mc)) - mc )/(cls.slope * 2)    
+```
+
+```{python}
+mc = 50  # 為alterable,可改變 marginal cost看整體影響
+twoblock1 = Twoblocks(mc)
+
+twoblock1.mc # face the same marginal cost = 50
+twoblock1.Qd(mc) # second block's profit maximizing quantity
+twoblock1.p(mc)  # second block's profit maximizing price
+twoblock1.profit(mc)
+
+totalprofit = monopoly1.profit(mc) + twoblock1.profit(mc) #兩區塊定價後的總收益(第一區塊的價格及產量被限制下)
+totalprofit
+
+```
+
+#2-2.同樣如果使用optimize.minimize求解?
+```{python}
+class retryTwoblocks:
+    intercept = 400  #原式為 p=200-0.5Q 換邊得 Q=400-2p
+    slope = 2
+    
+    def __init__(self, mc):
+        self.mc = mc
+    
+    def profit(self, p):
+        return p * self.__class__.Qd(p) - self.mc * self.__class__.Qd(p)
+    def optimize(self, x0=2):
+        optim_result = optimize.minimize(
+          fun=negative_conversion(self.profit),
+          x0=np.array([x0])
+        )
+        self.optim_p = optim_result.x
+        self.optim_q = self.__class__.Qd(self.optim_p)
+        return optim_result
+    
+    @classmethod
+    def Qd(cls, p):
+        return cls.intercept - cls.slope*p - retryMonopoly1.Qd(monopoly1.p(mc))
+
+# covert to negative function
+def negative_conversion(fn):
+    def neg_fun(p):
+        return -1*fn(p)
+    return neg_fun
+  
+```
+
+```{python}
+mc = 50
+
+twoblock1 = Twoblocks(mc)
+
+twoblock1.mc # face the same marginal cost = 50
+twoblock1.Qd(mc) # second block's profit maximizing quantity
+twoblock1.p(mc)  # second block's profit maximizing price
+twoblock1.profit(mc)
+
+retryTwoblocks1 = retryTwoblocks(mc)
+retryTwoblocks1.Qd(twoblock1.p(mc))
+retryTwoblocks1.profit(twoblock1.p(mc))
+
+retryTwoblocks1.optimize()
+retryTwoblocks1.optim_p  #close to 87.5
+retryTwoblocks1.optim_q  #close to 75
+
+retrytotalprofit = retryMonopoly1.profit(monopoly1.p(mc)) + retryTwoblocks1.profit(twoblock1.p(mc))
+retrytotalprofit #兩區塊定價後的總收益(第一區塊的價格及產量被限制下)
+
+```
+
+#3.Now the company wants to earn more profit with a set of prices and quantities for the two blocks.
+#  that's no given situation for the company,just maximize profit by block pricing.
+
+#3-1.block pricing.(Pursuing maximize profit without limited.)
+```{r, eval=F}
+conda_install("r-reticulate",
+              packages=c("sympy", "pandas"))
+```
+
+```{python}
+# demand curve and marginal cost set up or question required.(Assumed no fixed cost.)
+
+#在此可依據題意要求來更改所面臨之需求曲線之截距、斜率，以及所面臨的邊際成本。
+intercept = 200 #alterable
+slope = 0.5 #alterable
+mc = 50 # alterable
+
+```
+
+```{python}
+import sympy as sym
+from sympy import solve, linsolve, symbols, Matrix, Eq, diff
+
+```
+
+```{python}
+
+#target => max profit function = (intercept-slope * Q1 -mc) * Q1 + (intercept-slope * Q2 -mc) * (Q2-Q1)
+
+Q1, Q2 = symbols('Q1 Q2')
+focQ1 = diff((intercept-slope * Q1 -mc) * Q1 + (intercept-slope * Q2 -mc) * (Q2-Q1), Q1) #對Q1微
+focQ2 = diff((intercept-slope * Q1 -mc) * Q1 + (intercept-slope * Q2 -mc) * (Q2-Q1), Q2) #對Q2微
+
+```
+
+```{python}
+
+eq1 = Eq(focQ1)
+eq2 = Eq(focQ2)
+sol = solve([eq1, eq2], dict=True)
+
+sol[0][Q1] # first block output
+sol[0][Q2] # second block output
+
+
+p1 = intercept - slope * sol[0][Q1]
+p1 #first block price
+
+p2 = intercept - slope * sol[0][Q2]
+p2 #second block price
+
+```
+
+```{python}
+blockpricingtotalprofit = (p1-mc) * (sol[0][Q1]) + (p2-mc) * (sol[0][Q2]-sol[0][Q1])
+blockpricingtotalprofit #block pricing下極大化總收益 note:可觀察到也會大於被限制下使用兩區塊定價後的總收益
+
+```
+
