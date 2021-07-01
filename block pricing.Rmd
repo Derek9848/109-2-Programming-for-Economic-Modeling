@@ -32,7 +32,7 @@ conda_install("r-reticulate",
 
 ## Codes
 
-#1.Uniform price situation 以一般數值算式求解
+#1.Under uniform price situation 以一般數值算式求解
 ```{python}
 class Monopoly:  #under uniform price situation
     intercept = 200  # the demand curve's intercept (firm's faced)
@@ -87,16 +87,19 @@ class retryMonopoly:
         self.optim_p = optim_result.x
         self.optim_q = self.__class__.Qd(self.optim_p)
         return optim_result
+    def consumersurplus(self, mc): #之後和兩部定價比較會用到(for inheritance)
+        return (self.optim_p - mc) * (self.optim_q)
     
     @classmethod
     def Qd(cls, p):
         return cls.intercept - cls.slope*p
 
-# covert to negative function
+# covert to positive function
 def negative_conversion(fn):
     def neg_fun(p):
         return -1*fn(p)
     return neg_fun
+
 ```
 
 ```{python}
@@ -121,9 +124,9 @@ retryMonopoly1.optim_q  #close to 150
 
 #2.Now firm want's to improve its profits by implementing block pricing.
 #  suppose the company were to sell the first block at the price determined in the uniform price situation.
-#  (即給定p1、Q1為上面所解出的p、q，求算第二區塊之定價和產量以及block pricing下之extra profit)
+#(即給定p1、Q1為上面所解出的p、q，求算第二區塊之定價和產量以及block pricing下之extra profit)
 
-#2-1.以一般數值算式求解block pricing(First block been limited.)
+#2-1.以一般數值算式求解block pricing(First block price and quantity were limited.)
 ```{python}
 #此時p1 = 125, Q1 = 150,求p2,Q2 (如果有改數字就不會是這個狀況，不過這裡假設如此)
 
@@ -140,7 +143,8 @@ class Twoblocks:
     
     @classmethod
     def Qd(cls, mc):
-        return (cls.intercept - (cls.slope * monopoly1.Qd(mc)) - mc )/(cls.slope * 2)    
+        return (cls.intercept - (cls.slope * monopoly1.Qd(mc)) - mc )/(cls.slope * 2)
+
 ```
 
 ```{python}
@@ -181,12 +185,12 @@ class retryTwoblocks:
     def Qd(cls, p):
         return cls.intercept - cls.slope*p - retryMonopoly1.Qd(monopoly1.p(mc))
 
-# covert to negative function
+# covert to positive function
 def negative_conversion(fn):
     def neg_fun(p):
         return -1*fn(p)
     return neg_fun
-  
+
 ```
 
 ```{python}
@@ -245,10 +249,6 @@ Q1, Q2 = symbols('Q1 Q2')
 focQ1 = diff((intercept-slope * Q1 -mc) * Q1 + (intercept-slope * Q2 -mc) * (Q2-Q1), Q1) #對Q1微
 focQ2 = diff((intercept-slope * Q1 -mc) * Q1 + (intercept-slope * Q2 -mc) * (Q2-Q1), Q2) #對Q2微
 
-```
-
-```{python}
-
 eq1 = Eq(focQ1)
 eq2 = Eq(focQ2)
 sol = solve([eq1, eq2], dict=True)
@@ -257,7 +257,7 @@ sol[0][Q1] # first block output
 sol[0][Q2] # second block output
 
 
-p1 = intercept - slope * sol[0][Q1]
+p1 = intercept - slope * sol[0][Q1] #代回原需求函數中求得價格
 p1 #first block price
 
 p2 = intercept - slope * sol[0][Q2]
@@ -270,4 +270,58 @@ blockpricingtotalprofit = (p1-mc) * (sol[0][Q1]) + (p2-mc) * (sol[0][Q2]-sol[0][
 blockpricingtotalprofit #block pricing下極大化總收益 note:可觀察到也會大於被限制下使用兩區塊定價後的總收益
 
 ```
+
+#4 Two-part tariff(subscription and usage charge)
+# How to set the entry fee(T) and the per-unit usage charge(P)?
+# For simplicity,suppose all consumers are alike, each having a demand for telephone services as follows.
+
+#4-1. two-part tariff:
+```{python}
+#Assume the firm has a constant marginal cost of 50 and demand curve is...
+class Twoparttariff:
+    intercept = 20.05 #Assume
+    slope = 1 #Assume
+    def __init__(self, mc):
+        self.mc = mc
+    def profit(self, mc):
+        return 1/2 * (self.__class__.intercept-mc) * (self.__class__.intercept - mc) #此時p* = mc = 0.05
+
+#The concept of entry fee and a usage charge:為了能夠最大化的拿走全部的CS(消費者剩餘)，利用block pricing的方式一塊一塊的取走，最終價格p會定在mc為其最適定價，而後用entry fee(T)取走所有的CS.
+#故#此時p* = mc = 0.05
+```
+
+```{python}
+mc = 0.05 #Assume marginal cost = 0.05
+Twoparttariff1 = Twoparttariff(mc)
+Twoparttariff1.profit(mc)
+
+```
+
+#4-2. Compare to when under simple monopoly pricing:
+```{python}
+class simpleMonopoly(retryMonopoly): #inheritance
+    intercept = 20.05  #原式為 p=200-0.5Q 換邊得 Q=400-2p
+    slope = 1
+    
+    def __init__(self, mc):
+        self.mc = mc
+
+```
+
+```{python}
+mc = 0.05 #Assume marginal cost = 0.05
+simpleMonopoly1 = simpleMonopoly(mc)
+simpleMonopoly1.Qd(mc)
+simpleMonopoly1.profit(mc)  #這裡的廠商profit會變成0,but他們的新收入是消費者的所有CS.
+
+simpleMonopoly1.optimize()
+simpleMonopoly1.optim_p #最適定價為10.05
+simpleMonopoly1.optim_q #最適產量為10
+
+simpleMonopoly1.consumersurplus(mc) #廠商的新CS
+
+```
+
+#雖然數字有設計過，但可以發現這裡透過two-part tariff profit為200，而在面臨同樣地需求曲線和mc下，under simple monopoly下以MR=MC下求得profit為100，可以發現已經落差2倍了。
+#Note: in the real world, the firm cannot easily capture all the consumer surplus.
 
